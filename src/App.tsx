@@ -3,7 +3,7 @@ import { Spin, Toast } from '@douyinfe/semi-ui';
 import { ConfigPanel } from './components/ConfigPanel';
 import { GaugeChart } from './components/GaugeChart';
 import { configToForm, formToConfig } from './lib/config';
-import { dataToGaugeDatum } from './lib/completion';
+import { composeGaugeData, dataToGaugeDatum } from './lib/completion';
 import { defaultCustomConfig, defaultFormState, emptyData } from './lib/defaults';
 import {
   getConfig,
@@ -21,12 +21,15 @@ import type { DashboardData, DashboardState, DataRange, FieldMeta, FormState, Ta
 import './styles.css';
 
 const configurableStates: DashboardState[] = ['Create', 'Config'];
+const defaultRanges: DataRange[] = [{ type: 'ALL' }];
 
 export default function App() {
   const [dashboardState] = useState<DashboardState>(() => getDashboardState());
   const [tables, setTables] = useState<TableMeta[]>([]);
-  const [fields, setFields] = useState<FieldMeta[]>([]);
-  const [ranges, setRanges] = useState<DataRange[]>([{ type: 'ALL' }]);
+  const [currentFields, setCurrentFields] = useState<FieldMeta[]>([]);
+  const [targetFields, setTargetFields] = useState<FieldMeta[]>([]);
+  const [currentRanges, setCurrentRanges] = useState<DataRange[]>(defaultRanges);
+  const [targetRanges, setTargetRanges] = useState<DataRange[]>(defaultRanges);
   const [form, setForm] = useState<FormState>(defaultFormState);
   const [data, setData] = useState<DashboardData>(emptyData);
   const [loading, setLoading] = useState(true);
@@ -57,21 +60,37 @@ export default function App() {
       const tableList = await getTables();
       const persistedConfig = dashboardState === 'Create' ? undefined : await getConfig();
       const nextForm = configToForm(persistedConfig);
-      const tableId = nextForm.tableId || tableList[0]?.id || '';
-      const [fieldList, rangeList] = tableId ? await Promise.all([getFields(tableId), getRanges(tableId)]) : [[], [{ type: 'ALL' }]];
+      const fallbackTableId = tableList[0]?.id || '';
+      const currentTableId = nextForm.current.tableId || fallbackTableId;
+      const targetTableId = nextForm.target.tableId || fallbackTableId;
+      const [currentFieldList, currentRangeList] = currentTableId
+        ? await Promise.all([getFields(currentTableId), getRanges(currentTableId)])
+        : [[], defaultRanges];
+      const [targetFieldList, targetRangeList] = targetTableId
+        ? await Promise.all([getFields(targetTableId), getRanges(targetTableId)])
+        : [[], defaultRanges];
 
       if (!mounted) {
         return;
       }
 
       setTables(tableList);
-      setFields(fieldList);
-      setRanges(rangeList);
+      setCurrentFields(currentFieldList);
+      setTargetFields(targetFieldList);
+      setCurrentRanges(currentRangeList);
+      setTargetRanges(targetRangeList);
       setForm({
         ...nextForm,
-        tableId,
-        currentFieldId: nextForm.currentFieldId || fieldList[0]?.fieldId || '',
-        targetFieldId: nextForm.targetFieldId || fieldList[1]?.fieldId || fieldList[0]?.fieldId || '',
+        current: {
+          ...nextForm.current,
+          tableId: currentTableId,
+          fieldId: nextForm.current.fieldId || currentFieldList[0]?.fieldId || '',
+        },
+        target: {
+          ...nextForm.target,
+          tableId: targetTableId,
+          fieldId: nextForm.target.fieldId || targetFieldList[0]?.fieldId || '',
+        },
       });
 
       if (!isConfigurable) {
@@ -89,42 +108,79 @@ export default function App() {
   }, [dashboardState, isConfigurable]);
 
   useEffect(() => {
-    if (!form.tableId) {
+    if (!form.current.tableId) {
       return;
     }
 
     let mounted = true;
-    async function syncTableMeta() {
-      const [fieldList, rangeList] = await Promise.all([getFields(form.tableId), getRanges(form.tableId)]);
+    async function syncCurrentMeta() {
+      const [fieldList, rangeList] = await Promise.all([getFields(form.current.tableId), getRanges(form.current.tableId)]);
 
       if (!mounted) {
         return;
       }
 
-      setFields(fieldList);
-      setRanges(rangeList);
+      setCurrentFields(fieldList);
+      setCurrentRanges(rangeList);
       setForm((current) => ({
         ...current,
-        currentFieldId: current.currentFieldId || fieldList[0]?.fieldId || '',
-        targetFieldId: current.targetFieldId || fieldList[1]?.fieldId || fieldList[0]?.fieldId || '',
+        current: {
+          ...current.current,
+          fieldId: current.current.fieldId || fieldList[0]?.fieldId || '',
+        },
       }));
     }
 
-    void syncTableMeta();
+    void syncCurrentMeta();
 
     return () => {
       mounted = false;
     };
-  }, [form.tableId]);
+  }, [form.current.tableId]);
 
   useEffect(() => {
-    if (!isConfigurable || !form.tableId || !form.currentFieldId || !form.targetFieldId) {
+    if (!form.target.tableId) {
       return;
     }
 
-    const config = formToConfig(form, ranges);
-    void getPreviewData(config.dataConditions).then(setData);
-  }, [form, isConfigurable, ranges]);
+    let mounted = true;
+    async function syncTargetMeta() {
+      const [fieldList, rangeList] = await Promise.all([getFields(form.target.tableId), getRanges(form.target.tableId)]);
+
+      if (!mounted) {
+        return;
+      }
+
+      setTargetFields(fieldList);
+      setTargetRanges(rangeList);
+      setForm((current) => ({
+        ...current,
+        target: {
+          ...current.target,
+          fieldId: current.target.fieldId || fieldList[0]?.fieldId || '',
+        },
+      }));
+    }
+
+    void syncTargetMeta();
+
+    return () => {
+      mounted = false;
+    };
+  }, [form.target.tableId]);
+
+  useEffect(() => {
+    if (!isConfigurable || !form.current.tableId || !form.current.fieldId || !form.target.tableId || !form.target.fieldId) {
+      return;
+    }
+
+    const config = formToConfig(form, currentRanges, targetRanges);
+    const conditions = Array.isArray(config.dataConditions) ? config.dataConditions : [config.dataConditions];
+
+    void Promise.all([getPreviewData(conditions[0]), getPreviewData(conditions[1])]).then(([currentData, targetData]) => {
+      setData(composeGaugeData(currentData, targetData));
+    });
+  }, [form, isConfigurable, currentRanges, targetRanges]);
 
   useEffect(() => {
     const offDataChange = onDataChange((nextData) => setData(nextData));
@@ -139,7 +195,7 @@ export default function App() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await saveConfig(formToConfig(form, ranges));
+      await saveConfig(formToConfig(form, currentRanges, targetRanges));
       Toast.success('配置已保存');
     } finally {
       setSaving(false);
@@ -164,8 +220,10 @@ export default function App() {
         <ConfigPanel
           form={form}
           tables={tables}
-          fields={fields}
-          ranges={ranges}
+          currentFields={currentFields}
+          targetFields={targetFields}
+          currentRanges={currentRanges}
+          targetRanges={targetRanges}
           saving={saving}
           onChange={setForm}
           onSave={handleSave}

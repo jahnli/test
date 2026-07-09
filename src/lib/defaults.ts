@@ -17,11 +17,18 @@ export const defaultCustomConfig: CustomConfig = {
 };
 
 export const defaultFormState: FormState = {
-  tableId: '',
-  dataRangeKey: 'ALL',
-  currentFieldId: '',
-  targetFieldId: '',
-  rollup: 'SUM',
+  current: {
+    tableId: '',
+    dataRangeKey: 'ALL',
+    fieldId: '',
+    rollup: 'SUM',
+  },
+  target: {
+    tableId: '',
+    dataRangeKey: 'ALL',
+    fieldId: '',
+    rollup: 'SUM',
+  },
   title: defaultCustomConfig.title,
   currentLabel: defaultCustomConfig.currentLabel,
   targetLabel: defaultCustomConfig.targetLabel,

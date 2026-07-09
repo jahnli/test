@@ -1,13 +1,15 @@
 import { Button, Switch, Toast } from '@douyinfe/semi-ui';
 import type { CSSProperties } from 'react';
 import { rollupOptions } from '../lib/defaults';
-import type { DataRange, FieldMeta, FormState, TableMeta } from '../types/dashboard';
+import type { DataRange, FieldMeta, FormState, TableMeta, ValueSourceForm } from '../types/dashboard';
 
 interface ConfigPanelProps {
   form: FormState;
   tables: TableMeta[];
-  fields: FieldMeta[];
-  ranges: DataRange[];
+  currentFields: FieldMeta[];
+  targetFields: FieldMeta[];
+  currentRanges: DataRange[];
+  targetRanges: DataRange[];
   saving: boolean;
   onChange: (next: FormState) => void;
   onSave: () => Promise<void>;
@@ -31,7 +33,88 @@ function rangeKey(range: DataRange) {
   return range.type;
 }
 
-export function ConfigPanel({ form, tables, fields, ranges, saving, onChange, onSave }: ConfigPanelProps) {
+interface SourceSectionProps {
+  title: string;
+  source: ValueSourceForm;
+  tables: TableMeta[];
+  fields: FieldMeta[];
+  ranges: DataRange[];
+  onChange: (next: ValueSourceForm) => void;
+}
+
+function SourceSection({ title, source, tables, fields, ranges, onChange }: SourceSectionProps) {
+  const update = <Key extends keyof ValueSourceForm>(key: Key, value: ValueSourceForm[Key]) => {
+    onChange({
+      ...source,
+      [key]: value,
+      ...(key === 'tableId' ? { fieldId: '', dataRangeKey: 'ALL' } : {}),
+    });
+  };
+
+  return (
+    <div className="panel-section">
+      <h2>{title}</h2>
+
+      <label className="field">
+        <span>数据表</span>
+        <select value={source.tableId} onChange={(event) => update('tableId', event.target.value)}>
+          <option value="">请选择数据表</option>
+          {tables.map((table) => (
+            <option key={table.id} value={table.id}>
+              {table.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span>数据范围</span>
+        <select value={source.dataRangeKey} onChange={(event) => update('dataRangeKey', event.target.value)}>
+          {ranges.map((range) => (
+            <option key={rangeKey(range)} value={rangeKey(range)}>
+              {rangeLabel(range)}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span>数值字段</span>
+        <select value={source.fieldId} onChange={(event) => update('fieldId', event.target.value)}>
+          <option value="">请选择字段</option>
+          {fields.map((field) => (
+            <option key={field.fieldId} value={field.fieldId}>
+              {field.fieldName}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span>聚合方式</span>
+        <select value={source.rollup} onChange={(event) => update('rollup', event.target.value as ValueSourceForm['rollup'])}>
+          {rollupOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+export function ConfigPanel({
+  form,
+  tables,
+  currentFields,
+  targetFields,
+  currentRanges,
+  targetRanges,
+  saving,
+  onChange,
+  onSave,
+}: ConfigPanelProps) {
   const update = <Key extends keyof FormState>(key: Key, value: FormState[Key]) => {
     onChange({
       ...form,
@@ -40,8 +123,8 @@ export function ConfigPanel({ form, tables, fields, ranges, saving, onChange, on
   };
 
   const handleSave = async () => {
-    if (!form.tableId || !form.currentFieldId || !form.targetFieldId) {
-      Toast.warning('请先选择数据表、当前字段和目标字段');
+    if (!form.current.tableId || !form.current.fieldId || !form.target.tableId || !form.target.fieldId) {
+      Toast.warning('请先完成当前值和目标值的数据配置');
       return;
     }
 
@@ -51,69 +134,26 @@ export function ConfigPanel({ form, tables, fields, ranges, saving, onChange, on
   return (
     <aside className="config-panel">
       <div className="config-scroll">
-        <div className="panel-section">
-          <h2>类型与数据</h2>
+        <SourceSection
+          title="目标值"
+          source={form.target}
+          tables={tables}
+          fields={targetFields}
+          ranges={targetRanges}
+          onChange={(target) => update('target', target)}
+        />
 
-          <label className="field">
-            <span>数据表</span>
-            <select value={form.tableId} onChange={(event) => update('tableId', event.target.value)}>
-              {tables.map((table) => (
-                <option key={table.id} value={table.id}>
-                  {table.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>数据范围</span>
-            <select value={form.dataRangeKey} onChange={(event) => update('dataRangeKey', event.target.value)}>
-              {ranges.map((range) => (
-                <option key={rangeKey(range)} value={rangeKey(range)}>
-                  {rangeLabel(range)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>当前字段</span>
-            <select value={form.currentFieldId} onChange={(event) => update('currentFieldId', event.target.value)}>
-              <option value="">请选择字段</option>
-              {fields.map((field) => (
-                <option key={field.fieldId} value={field.fieldId}>
-                  {field.fieldName}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>目标字段</span>
-            <select value={form.targetFieldId} onChange={(event) => update('targetFieldId', event.target.value)}>
-              <option value="">请选择字段</option>
-              {fields.map((field) => (
-                <option key={field.fieldId} value={field.fieldId}>
-                  {field.fieldName}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>聚合方式</span>
-            <select value={form.rollup} onChange={(event) => update('rollup', event.target.value as FormState['rollup'])}>
-              {rollupOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <SourceSection
+          title="当前值"
+          source={form.current}
+          tables={tables}
+          fields={currentFields}
+          ranges={currentRanges}
+          onChange={(current) => update('current', current)}
+        />
 
         <div className="panel-section">
-          <h2>自定义样式</h2>
+          <h2>自定义配置</h2>
 
           <label className="field">
             <span>标题</span>

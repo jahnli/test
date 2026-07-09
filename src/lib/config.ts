@@ -1,5 +1,5 @@
 import { defaultCustomConfig, defaultFormState } from './defaults';
-import type { DataRange, FormState, PluginConfig } from '../types/dashboard';
+import type { DataCondition, DataRange, FormState, PluginConfig, ValueSourceForm } from '../types/dashboard';
 
 export function rangeToKey(range?: DataRange) {
   if (!range || range.type === 'ALL') {
@@ -22,22 +22,63 @@ export function rangeFromKey(key: string, ranges: DataRange[]) {
   return ranges.find((range) => range.type === key);
 }
 
+function sourceFromCondition(condition?: DataCondition): ValueSourceForm {
+  const series = Array.isArray(condition?.series) ? condition.series : [];
+
+  return {
+    tableId: condition?.tableId ?? '',
+    dataRangeKey: rangeToKey(condition?.dataRange),
+    fieldId: series[0]?.fieldId ?? '',
+    rollup: series[0]?.rollup ?? 'SUM',
+  };
+}
+
+function conditionFromSource(source: ValueSourceForm, ranges: DataRange[]): DataCondition {
+  return {
+    tableId: source.tableId,
+    dataRange: rangeFromKey(source.dataRangeKey, ranges),
+    series: [
+      {
+        fieldId: source.fieldId,
+        rollup: source.rollup,
+      },
+    ],
+  };
+}
+
 export function configToForm(config?: Partial<PluginConfig>): FormState {
-  const condition = Array.isArray(config?.dataConditions) ? config?.dataConditions[0] : config?.dataConditions;
+  const conditions = Array.isArray(config?.dataConditions)
+    ? config.dataConditions
+    : config?.dataConditions
+      ? [config.dataConditions]
+      : [];
   const custom = {
     ...defaultCustomConfig,
     ...config?.customConfig,
   };
 
-  const series = Array.isArray(condition?.series) ? condition?.series : [];
+  const legacySeries = Array.isArray(conditions[0]?.series) ? conditions[0].series : [];
+  const current =
+    conditions.length > 1
+      ? sourceFromCondition(conditions[0])
+      : {
+          ...sourceFromCondition(conditions[0]),
+          fieldId: legacySeries[0]?.fieldId ?? '',
+          rollup: legacySeries[0]?.rollup ?? 'SUM',
+        };
+  const target =
+    conditions.length > 1
+      ? sourceFromCondition(conditions[1])
+      : {
+          ...sourceFromCondition(conditions[0]),
+          fieldId: legacySeries[1]?.fieldId ?? legacySeries[0]?.fieldId ?? '',
+          rollup: legacySeries[1]?.rollup ?? legacySeries[0]?.rollup ?? 'SUM',
+        };
 
   return {
     ...defaultFormState,
-    tableId: condition?.tableId ?? '',
-    dataRangeKey: rangeToKey(condition?.dataRange),
-    currentFieldId: series[0]?.fieldId ?? '',
-    targetFieldId: series[1]?.fieldId ?? '',
-    rollup: series[0]?.rollup ?? 'SUM',
+    current,
+    target,
     title: custom.title,
     currentLabel: custom.currentLabel,
     targetLabel: custom.targetLabel,
@@ -46,22 +87,12 @@ export function configToForm(config?: Partial<PluginConfig>): FormState {
   };
 }
 
-export function formToConfig(form: FormState, ranges: DataRange[]): PluginConfig {
+export function formToConfig(form: FormState, currentRanges: DataRange[], targetRanges: DataRange[]): PluginConfig {
   return {
-    dataConditions: {
-      tableId: form.tableId,
-      dataRange: rangeFromKey(form.dataRangeKey, ranges),
-      series: [
-        {
-          fieldId: form.currentFieldId,
-          rollup: form.rollup,
-        },
-        {
-          fieldId: form.targetFieldId,
-          rollup: form.rollup,
-        },
-      ],
-    },
+    dataConditions: [
+      conditionFromSource(form.current, currentRanges),
+      conditionFromSource(form.target, targetRanges),
+    ],
     customConfig: {
       title: form.title,
       currentLabel: form.currentLabel,

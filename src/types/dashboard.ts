@@ -44,12 +44,16 @@ export interface PluginConfig {
   customConfig: CustomConfig;
 }
 
-export interface FormState {
+export interface ValueSourceForm {
   tableId: string;
   dataRangeKey: string;
-  currentFieldId: string;
-  targetFieldId: string;
+  fieldId: string;
   rollup: Rollup;
+}
+
+export interface FormState {
+  current: ValueSourceForm;
+  target: ValueSourceForm;
   title: string;
   currentLabel: string;
   targetLabel: string;

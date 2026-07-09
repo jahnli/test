@@ -53,3 +53,32 @@ export function dataToGaugeDatum(data: DashboardData): GaugeDatum | null {
     rate: getCompletionRate(current, target),
   };
 }
+
+export function firstNumericValue(data: DashboardData) {
+  return (
+    data
+      .flat()
+      .map((item) => parseNumber(item.value ?? item.text))
+      .find((value): value is number => value !== null) ?? null
+  );
+}
+
+export function composeGaugeData(currentData: DashboardData, targetData: DashboardData): DashboardData {
+  const current = firstNumericValue(currentData);
+  const target = firstNumericValue(targetData);
+
+  if (current === null || target === null) {
+    return [];
+  }
+
+  return [
+    [
+      { value: '当前', text: '当前' },
+      { value: '目标', text: '目标' },
+    ],
+    [
+      { value: current, text: formatNumber(current) },
+      { value: target, text: formatNumber(target) },
+    ],
+  ];
+}
