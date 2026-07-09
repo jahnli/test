@@ -16,6 +16,7 @@ interface ConfigPanelProps {
 }
 
 const palette = ['#25A8FF', '#4E7BFF', '#22B8A7', '#FFB020', '#7B61FF'];
+const fieldRollupOptions = rollupOptions.filter((option) => option.value !== 'COUNTA');
 
 function rangeLabel(range: DataRange) {
   if (range.type === 'ALL') {
@@ -48,11 +49,12 @@ function SourceSection({ title, source, tables, fields, ranges, onChange }: Sour
       ...source,
       [key]: value,
       ...(key === 'tableId' ? { fieldId: '', dataRangeKey: 'ALL' } : {}),
+      ...(key === 'valueMode' && value === 'COUNT' ? { fieldId: '' } : {}),
     });
   };
 
   return (
-    <div className="panel-section">
+    <div className="panel-section source-section">
       <h2>{title}</h2>
 
       <label className="field">
@@ -78,28 +80,35 @@ function SourceSection({ title, source, tables, fields, ranges, onChange }: Sour
         </select>
       </label>
 
-      <label className="field">
-        <span>数值字段</span>
-        <select value={source.fieldId} onChange={(event) => update('fieldId', event.target.value)}>
-          <option value="">请选择字段</option>
-          {fields.map((field) => (
-            <option key={field.fieldId} value={field.fieldId}>
-              {field.fieldName}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="field">
+        <span>数值</span>
+        <div className="metric-box">
+          <select value={source.valueMode} onChange={(event) => update('valueMode', event.target.value as ValueSourceForm['valueMode'])}>
+            <option value="COUNT">统计记录总数</option>
+            <option value="FIELD">统计字段数值</option>
+          </select>
 
-      <label className="field">
-        <span>聚合方式</span>
-        <select value={source.rollup} onChange={(event) => update('rollup', event.target.value as ValueSourceForm['rollup'])}>
-          {rollupOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+          {source.valueMode === 'FIELD' ? (
+            <div className="metric-row">
+              <select className="metric-field" value={source.fieldId} onChange={(event) => update('fieldId', event.target.value)}>
+                <option value="">请选择字段</option>
+                {fields.map((field) => (
+                  <option key={field.fieldId} value={field.fieldId}>
+                    # {field.fieldName}
+                  </option>
+                ))}
+              </select>
+              <select className="metric-rollup" value={source.rollup} onChange={(event) => update('rollup', event.target.value as ValueSourceForm['rollup'])}>
+                {fieldRollupOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -123,7 +132,10 @@ export function ConfigPanel({
   };
 
   const handleSave = async () => {
-    if (!form.current.tableId || !form.current.fieldId || !form.target.tableId || !form.target.fieldId) {
+    const currentReady = form.current.tableId && (form.current.valueMode === 'COUNT' || form.current.fieldId);
+    const targetReady = form.target.tableId && (form.target.valueMode === 'COUNT' || form.target.fieldId);
+
+    if (!currentReady || !targetReady) {
       Toast.warning('请先完成当前值和目标值的数据配置');
       return;
     }
@@ -153,7 +165,7 @@ export function ConfigPanel({
         />
 
         <div className="panel-section">
-          <h2>自定义配置</h2>
+          <h2>数字格式</h2>
 
           <label className="field">
             <span>标题</span>

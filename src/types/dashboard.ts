@@ -47,6 +47,7 @@ export interface PluginConfig {
 export interface ValueSourceForm {
   tableId: string;
   dataRangeKey: string;
+  valueMode: 'FIELD' | 'COUNT';
   fieldId: string;
   rollup: Rollup;
 }

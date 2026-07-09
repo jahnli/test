@@ -108,6 +108,30 @@ select {
   box-shadow: 0 0 0 3px rgba(37, 168, 255, 0.13);
 }
 
+.source-section {
+  border-bottom: 1px solid rgba(31, 35, 41, 0.08);
+  padding-bottom: 12px;
+}
+
+.metric-box {
+  display: grid;
+  gap: 8px;
+  border-radius: 6px;
+  background: rgba(31, 35, 41, 0.04);
+  padding: 8px;
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  gap: 8px;
+}
+
+.metric-field,
+.metric-rollup {
+  min-width: 0;
+}
+
 .field-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

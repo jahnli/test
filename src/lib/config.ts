@@ -28,6 +28,7 @@ function sourceFromCondition(condition?: DataCondition): ValueSourceForm {
   return {
     tableId: condition?.tableId ?? '',
     dataRangeKey: rangeToKey(condition?.dataRange),
+    valueMode: condition?.series === 'COUNTA' ? 'COUNT' : 'FIELD',
     fieldId: series[0]?.fieldId ?? '',
     rollup: series[0]?.rollup ?? 'SUM',
   };
@@ -37,12 +38,15 @@ function conditionFromSource(source: ValueSourceForm, ranges: DataRange[]): Data
   return {
     tableId: source.tableId,
     dataRange: rangeFromKey(source.dataRangeKey, ranges),
-    series: [
-      {
-        fieldId: source.fieldId,
-        rollup: source.rollup,
-      },
-    ],
+    series:
+      source.valueMode === 'COUNT'
+        ? 'COUNTA'
+        : [
+            {
+              fieldId: source.fieldId,
+              rollup: source.rollup,
+            },
+          ],
   };
 }
 
@@ -58,19 +62,21 @@ export function configToForm(config?: Partial<PluginConfig>): FormState {
   };
 
   const legacySeries = Array.isArray(conditions[0]?.series) ? conditions[0].series : [];
-  const current =
+  const current: ValueSourceForm =
     conditions.length > 1
       ? sourceFromCondition(conditions[0])
       : {
           ...sourceFromCondition(conditions[0]),
+          valueMode: 'FIELD' as const,
           fieldId: legacySeries[0]?.fieldId ?? '',
           rollup: legacySeries[0]?.rollup ?? 'SUM',
         };
-  const target =
+  const target: ValueSourceForm =
     conditions.length > 1
       ? sourceFromCondition(conditions[1])
       : {
           ...sourceFromCondition(conditions[0]),
+          valueMode: 'FIELD' as const,
           fieldId: legacySeries[1]?.fieldId ?? legacySeries[0]?.fieldId ?? '',
           rollup: legacySeries[1]?.rollup ?? legacySeries[0]?.rollup ?? 'SUM',
         };

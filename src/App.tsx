@@ -170,7 +170,10 @@ export default function App() {
   }, [form.target.tableId]);
 
   useEffect(() => {
-    if (!isConfigurable || !form.current.tableId || !form.current.fieldId || !form.target.tableId || !form.target.fieldId) {
+    const currentReady = form.current.tableId && (form.current.valueMode === 'COUNT' || form.current.fieldId);
+    const targetReady = form.target.tableId && (form.target.valueMode === 'COUNT' || form.target.fieldId);
+
+    if (!isConfigurable || !currentReady || !targetReady) {
       return;
     }
 

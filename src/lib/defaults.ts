@@ -20,12 +20,14 @@ export const defaultFormState: FormState = {
   current: {
     tableId: '',
     dataRangeKey: 'ALL',
+    valueMode: 'FIELD',
     fieldId: '',
     rollup: 'SUM',
   },
   target: {
     tableId: '',
     dataRangeKey: 'ALL',
+    valueMode: 'FIELD',
     fieldId: '',
     rollup: 'SUM',
   },
