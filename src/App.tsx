@@ -67,9 +67,11 @@ export default function App() {
   const gaugeDatum = useMemo(() => dataToGaugeDatum(data), [data]);
 
   const resolveGaugeData = async (conditions: DataCondition[], hostData?: DashboardData) => {
-    if (hostData && dataToGaugeDatum(hostData)) {
-      return hostData;
-    }
+    console.log('[目标完成率插件] resolveGaugeData 输入', {
+      conditions,
+      hostData,
+      hostFirstValue: firstNumericValue(hostData ?? emptyData),
+    });
 
     if (conditions.length >= 2) {
       const filteredCurrent = hostData && firstNumericValue(hostData) !== null ? hostData : undefined;
@@ -77,9 +79,16 @@ export default function App() {
         filteredCurrent ? Promise.resolve(filteredCurrent) : getPreviewData(conditions[0]),
         getPreviewData(conditions[1]),
       ]);
-      return composeGaugeData(currentData, targetData);
+      const composedData = composeGaugeData(currentData, targetData);
+      console.log('[目标完成率插件] resolveGaugeData 合成结果', {
+        currentData,
+        targetData,
+        composedData,
+      });
+      return composedData;
     }
 
+    console.log('[目标完成率插件] resolveGaugeData 条件不足，返回宿主数据', hostData ?? emptyData);
     return hostData ?? emptyData;
   };
 
@@ -232,12 +241,21 @@ export default function App() {
 
   useEffect(() => {
     const offDataChange = onDataChange((nextData) => {
+      console.log('[目标完成率插件] onDataChange 触发', {
+        nextData,
+        cachedConditions: dataConditionsRef.current,
+      });
       void resolveGaugeData(dataConditionsRef.current, nextData).then(async (resolvedData) => {
+        console.log('[目标完成率插件] onDataChange 设置图表数据', {
+          resolvedData,
+          gaugeDatum: dataToGaugeDatum(resolvedData),
+        });
         setData(resolvedData);
         await setRendered();
       });
     });
     const offConfigChange = onConfigChange((nextConfig) => {
+      console.log('[目标完成率插件] onConfigChange 触发', nextConfig);
       dataConditionsRef.current = getConditionList(nextConfig);
       setForm(configToForm(nextConfig));
 
