@@ -3,7 +3,7 @@ import { Spin, Toast } from '@douyinfe/semi-ui';
 import { ConfigPanel } from './components/ConfigPanel';
 import { GaugeChart } from './components/GaugeChart';
 import { conditionFromSource, configToForm, formToConfig } from './lib/config';
-import { composeGaugeData, dataToGaugeDatum } from './lib/completion';
+import { composeGaugeData, dataToGaugeDatum, firstNumericValue } from './lib/completion';
 import { defaultCustomConfig, defaultFormState, emptyData } from './lib/defaults';
 import {
   getConfig,
@@ -72,7 +72,11 @@ export default function App() {
     }
 
     if (conditions.length >= 2) {
-      const [currentData, targetData] = await Promise.all([getPreviewData(conditions[0]), getPreviewData(conditions[1])]);
+      const filteredCurrent = hostData && firstNumericValue(hostData) !== null ? hostData : undefined;
+      const [currentData, targetData] = await Promise.all([
+        filteredCurrent ? Promise.resolve(filteredCurrent) : getPreviewData(conditions[0]),
+        getPreviewData(conditions[1]),
+      ]);
       return composeGaugeData(currentData, targetData);
     }
 
@@ -132,7 +136,9 @@ export default function App() {
 
       if (!isConfigurable) {
         const hostData = await getData();
-        setData(await resolveGaugeData(effectiveConditions, hostData));
+        const nextData = await resolveGaugeData(effectiveConditions, hostData);
+        setData(nextData);
+        await setRendered();
       }
 
       setLoading(false);
@@ -226,16 +232,23 @@ export default function App() {
 
   useEffect(() => {
     const offDataChange = onDataChange((nextData) => {
-      if (dataToGaugeDatum(nextData)) {
-        setData(nextData);
-        return;
-      }
-
-      void resolveGaugeData(dataConditionsRef.current, nextData).then(setData);
+      void resolveGaugeData(dataConditionsRef.current, nextData).then(async (resolvedData) => {
+        setData(resolvedData);
+        await setRendered();
+      });
     });
     const offConfigChange = onConfigChange((nextConfig) => {
       dataConditionsRef.current = getConditionList(nextConfig);
       setForm(configToForm(nextConfig));
+
+      if (!configurableStates.includes(getDashboardState())) {
+        void getData()
+          .then((hostData) => resolveGaugeData(dataConditionsRef.current, hostData))
+          .then(async (resolvedData) => {
+            setData(resolvedData);
+            await setRendered();
+          });
+      }
     });
 
     return () => {
