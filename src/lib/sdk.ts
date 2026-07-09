@@ -26,7 +26,6 @@ interface LooseDashboard {
 }
 
 interface LooseBase {
-  getTableMetaList?: () => Promise<unknown>;
   getTableList?: () => Promise<unknown>;
 }
 
@@ -146,12 +145,6 @@ export function getDashboardState(): DashboardState {
 
 export async function getTables() {
   try {
-    const tableMetas = await withTimeout(baseApi.getTableMetaList?.(), undefined);
-    const tablesFromMeta = await normalizeTableList(tableMetas);
-    if (tablesFromMeta.length > 0) {
-      return tablesFromMeta;
-    }
-
     const tables = await withTimeout(baseApi.getTableList?.(), []);
     return await normalizeTableList(tables);
   } catch {
