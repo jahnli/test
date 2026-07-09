@@ -1,4 +1,4 @@
-import { base, dashboard } from '@lark-base-open/js-sdk';
+﻿import { base, bridge, dashboard } from '@lark-base-open/js-sdk';
 import { defaultCustomConfig, emptyData } from './defaults';
 import type {
   DashboardData,
@@ -29,10 +29,15 @@ interface LooseBase {
   getTableList?: () => Promise<unknown>;
 }
 
+interface LooseBridge {
+  onDataChange?: (handler: (event: { data: unknown }) => void) => Off;
+}
+
 const dashboardApi = dashboard as unknown as LooseDashboard;
 const baseApi = base as unknown as LooseBase;
+const bridgeApi = bridge as unknown as LooseBridge;
 const sdkTimeoutMs = 900;
-const debugPrefix = '[目标完成率插件]';
+const debugPrefix = '[progress-plugin]';
 
 function debugLog(label: string, value: unknown) {
   // Temporary diagnostics for Feishu dashboard SDK integration.
@@ -83,7 +88,7 @@ async function normalizeTableList(value: unknown): Promise<TableMeta[]> {
       const name = await readMaybeAsyncString(record.name ?? record.tableName ?? record.getName, record);
       return {
         id: String(id ?? ''),
-        name: name || '未命名数据表',
+        name: name || '鏈懡鍚嶆暟鎹〃',
       };
     }),
   );
@@ -105,7 +110,7 @@ function normalizeFieldList(value: unknown): FieldMeta[] {
       const name = record.fieldName ?? record.name;
       return {
         fieldId: String(id ?? ''),
-        fieldName: String(name ?? '未命名字段'),
+        fieldName: String(name ?? 'Unnamed field'),
         fieldType: record.fieldType as string | number | undefined,
       };
     })
@@ -157,13 +162,13 @@ export function getDashboardState(): DashboardState {
 export async function getTables() {
   try {
     const tables = await withTimeout(baseApi.getTableList?.(), []);
-    debugLog('base.getTableList 原始返回', tables);
+    debugLog('base.getTableList raw', tables);
 
     const normalized = await normalizeTableList(tables);
-    debugLog('数据表归一化结果', normalized);
+    debugLog('table list normalized', normalized);
     return normalized;
   } catch {
-    debugLog('base.getTableList 获取失败', []);
+    debugLog('base.getTableList failed', []);
     return [];
   }
 }
@@ -171,13 +176,13 @@ export async function getTables() {
 export async function getFields(tableId: string) {
   try {
     const fields = await withTimeout(dashboardApi.getCategories?.(tableId), []);
-    debugLog(`dashboard.getCategories(${tableId}) 原始返回`, fields);
+    debugLog(`dashboard.getCategories(${tableId}) raw`, fields);
 
     const normalized = normalizeFieldList(fields);
-    debugLog('字段归一化结果', normalized);
+    debugLog('field list normalized', normalized);
     return normalized;
   } catch {
-    debugLog(`dashboard.getCategories(${tableId}) 获取失败`, []);
+    debugLog(`dashboard.getCategories(${tableId}) failed`, []);
     return [];
   }
 }
@@ -185,13 +190,13 @@ export async function getFields(tableId: string) {
 export async function getRanges(tableId: string) {
   try {
     const ranges = await withTimeout(dashboardApi.getTableDataRange?.(tableId), [{ type: 'ALL' }]);
-    debugLog(`dashboard.getTableDataRange(${tableId}) 原始返回`, ranges);
+    debugLog(`dashboard.getTableDataRange(${tableId}) raw`, ranges);
 
     const normalized = normalizeRanges(ranges);
-    debugLog('数据范围归一化结果', normalized);
+    debugLog('range list normalized', normalized);
     return normalized;
   } catch {
-    debugLog(`dashboard.getTableDataRange(${tableId}) 获取失败`, [{ type: 'ALL' }]);
+    debugLog(`dashboard.getTableDataRange(${tableId}) failed`, [{ type: 'ALL' }]);
     return [{ type: 'ALL' }];
   }
 }
@@ -199,31 +204,31 @@ export async function getRanges(tableId: string) {
 export async function getConfig() {
   try {
     const config = await withTimeout(dashboardApi.getConfig?.(), undefined);
-    debugLog('dashboard.getConfig 原始返回', config);
+    debugLog('dashboard.getConfig raw', config);
 
     const normalized = normalizeConfig(config);
-    debugLog('配置归一化结果', normalized);
+    debugLog('config normalized', normalized);
     return normalized;
   } catch {
-    debugLog('dashboard.getConfig 获取失败', undefined);
+    debugLog('dashboard.getConfig failed', undefined);
     return normalizeConfig(undefined);
   }
 }
 
 export async function saveConfig(config: PluginConfig) {
   try {
-    debugLog('dashboard.saveConfig 入参', config);
+    debugLog('dashboard.saveConfig input', config);
 
     if (typeof dashboardApi.saveConfig !== 'function') {
-      debugLog('dashboard.saveConfig 方法不存在', Object.keys(dashboardApi as Record<string, unknown>));
-      throw new Error('dashboard.saveConfig 方法不存在');
+      debugLog('dashboard.saveConfig missing', Object.keys(dashboardApi as Record<string, unknown>));
+      throw new Error('dashboard.saveConfig missing');
     }
 
     const result = await dashboardApi.saveConfig(config);
-    debugLog('dashboard.saveConfig 返回', result);
+    debugLog('dashboard.saveConfig result', result);
     return result;
   } catch (error) {
-    debugLog('dashboard.saveConfig 保存失败', error);
+    debugLog('dashboard.saveConfig failed', error);
     throw error;
   }
 }
@@ -231,22 +236,22 @@ export async function saveConfig(config: PluginConfig) {
 export async function getData() {
   try {
     const data = await withTimeout(dashboardApi.getData?.(), emptyData);
-    debugLog('dashboard.getData 原始返回', data);
+    debugLog('dashboard.getData raw', data);
     return (data as DashboardData) ?? emptyData;
   } catch {
-    debugLog('dashboard.getData 获取失败', emptyData);
+    debugLog('dashboard.getData failed', emptyData);
     return emptyData;
   }
 }
 
 export async function getPreviewData(condition: DataCondition | DataCondition[]) {
   try {
-    debugLog('dashboard.getPreviewData 入参', condition);
+    debugLog('dashboard.getPreviewData input', condition);
     const data = await withTimeout(dashboardApi.getPreviewData?.(condition), emptyData);
-    debugLog('dashboard.getPreviewData 原始返回', data);
+    debugLog('dashboard.getPreviewData raw', data);
     return (data as DashboardData) ?? emptyData;
   } catch {
-    debugLog('dashboard.getPreviewData 获取失败', emptyData);
+    debugLog('dashboard.getPreviewData failed', emptyData);
     return emptyData;
   }
 }
@@ -261,26 +266,57 @@ export async function setRendered() {
 
 export function onDataChange(handler: (data: DashboardData) => void) {
   try {
+    debugLog('register dashboard.onDataChange', {
+      exists: typeof dashboardApi.onDataChange === 'function',
+      state: dashboardApi.state,
+    });
+
     return (
       dashboardApi.onDataChange?.((event) => {
-        debugLog('dashboard.onDataChange 事件数据', event.data);
+        debugLog('dashboard.onDataChange event', event.data);
         handler(event.data);
       }) ?? (() => undefined)
     );
-  } catch {
+  } catch (error) {
+    debugLog('dashboard.onDataChange register failed', error);
     return () => undefined;
   }
 }
 
 export function onConfigChange(handler: (config: PluginConfig) => void) {
   try {
+    debugLog('register dashboard.onConfigChange', {
+      exists: typeof dashboardApi.onConfigChange === 'function',
+      state: dashboardApi.state,
+    });
+
     return (
       dashboardApi.onConfigChange?.((event) => {
-        debugLog('dashboard.onConfigChange 事件数据', event.data);
+        debugLog('dashboard.onConfigChange event', event.data);
         handler(normalizeConfig(event.data));
       }) ?? (() => undefined)
     );
-  } catch {
+  } catch (error) {
+    debugLog('dashboard.onConfigChange register failed', error);
     return () => undefined;
   }
 }
+
+export function onBridgeDataChange(handler: (eventData: unknown) => void) {
+  try {
+    debugLog('register bridge.onDataChange', {
+      exists: typeof bridgeApi.onDataChange === 'function',
+    });
+
+    return (
+      bridgeApi.onDataChange?.((event) => {
+        debugLog('bridge.onDataChange event', event.data);
+        handler(event.data);
+      }) ?? (() => undefined)
+    );
+  } catch (error) {
+    debugLog('bridge.onDataChange register failed', error);
+    return () => undefined;
+  }
+}
+

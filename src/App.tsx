@@ -13,6 +13,7 @@ import {
   getPreviewData,
   getRanges,
   getTables,
+  onBridgeDataChange,
   onConfigChange,
   onDataChange,
   saveConfig,
@@ -23,6 +24,7 @@ import './styles.css';
 
 const configurableStates: DashboardState[] = ['Create', 'Config'];
 const defaultRanges: DataRange[] = [{ type: 'ALL' }];
+const debugVersion = '2026-07-09-bridge-data-change-debug';
 
 function getConditionList(config?: PluginConfig): DataCondition[] {
   if (config?.customConfig?.sourceConditions?.length) {
@@ -52,6 +54,14 @@ export default function App() {
   const isConfigurable = configurableStates.includes(dashboardState);
   const isFullScreen = dashboardState === 'FullScreen';
 
+  useEffect(() => {
+    console.log('[progress-plugin] app mounted', {
+      version: debugVersion,
+      dashboardState,
+      href: window.location.href,
+    });
+  }, [dashboardState]);
+
   const chartConfig = useMemo(
     () => ({
       ...defaultCustomConfig,
@@ -67,6 +77,11 @@ export default function App() {
   const gaugeDatum = useMemo(() => dataToGaugeDatum(data), [data]);
 
   const resolveGaugeData = async (conditions: DataCondition[], hostData?: DashboardData) => {
+    console.log('[progress-plugin] resolveGaugeData input', {
+      conditions,
+      hostData,
+      hostFirstValue: firstNumericValue(hostData ?? emptyData),
+    });
     console.log('[目标完成率插件] resolveGaugeData 输入', {
       conditions,
       hostData,
@@ -80,6 +95,11 @@ export default function App() {
         getPreviewData(conditions[1]),
       ]);
       const composedData = composeGaugeData(currentData, targetData);
+      console.log('[progress-plugin] resolveGaugeData composed', {
+        currentData,
+        targetData,
+        composedData,
+      });
       console.log('[目标完成率插件] resolveGaugeData 合成结果', {
         currentData,
         targetData,
@@ -241,11 +261,19 @@ export default function App() {
 
   useEffect(() => {
     const offDataChange = onDataChange((nextData) => {
+      console.log('[progress-plugin] dashboard onDataChange handler', {
+        nextData,
+        cachedConditions: dataConditionsRef.current,
+      });
       console.log('[目标完成率插件] onDataChange 触发', {
         nextData,
         cachedConditions: dataConditionsRef.current,
       });
       void resolveGaugeData(dataConditionsRef.current, nextData).then(async (resolvedData) => {
+        console.log('[progress-plugin] dashboard onDataChange set data', {
+          resolvedData,
+          gaugeDatum: dataToGaugeDatum(resolvedData),
+        });
         console.log('[目标完成率插件] onDataChange 设置图表数据', {
           resolvedData,
           gaugeDatum: dataToGaugeDatum(resolvedData),
@@ -254,7 +282,25 @@ export default function App() {
         await setRendered();
       });
     });
+    const offBridgeDataChange = onBridgeDataChange((eventData) => {
+      console.log('[progress-plugin] bridge onDataChange handler', {
+        eventData,
+        cachedConditions: dataConditionsRef.current,
+      });
+
+      void getData()
+        .then((hostData) => resolveGaugeData(dataConditionsRef.current, hostData))
+        .then(async (resolvedData) => {
+          console.log('[progress-plugin] bridge onDataChange set data', {
+            resolvedData,
+            gaugeDatum: dataToGaugeDatum(resolvedData),
+          });
+          setData(resolvedData);
+          await setRendered();
+        });
+    });
     const offConfigChange = onConfigChange((nextConfig) => {
+      console.log('[progress-plugin] dashboard onConfigChange handler', nextConfig);
       console.log('[目标完成率插件] onConfigChange 触发', nextConfig);
       dataConditionsRef.current = getConditionList(nextConfig);
       setForm(configToForm(nextConfig));
@@ -271,6 +317,7 @@ export default function App() {
 
     return () => {
       offDataChange();
+      offBridgeDataChange();
       offConfigChange();
     };
   }, []);
