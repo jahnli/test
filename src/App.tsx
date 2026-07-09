@@ -16,6 +16,7 @@ import {
   onConfigChange,
   onDataChange,
   saveConfig,
+  setRendered,
 } from './lib/sdk';
 import type { DashboardData, DashboardState, DataCondition, DataRange, FieldMeta, FormState, PluginConfig, TableMeta } from './types/dashboard';
 import './styles.css';
@@ -246,7 +247,15 @@ export default function App() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await saveConfig(formToConfig(form, currentRanges, targetRanges));
+      const config = formToConfig(form, currentRanges, targetRanges);
+      const conditions = Array.isArray(config.dataConditions) ? config.dataConditions : [config.dataConditions];
+      dataConditionsRef.current = conditions;
+
+      const [currentData, targetData] = await Promise.all([getPreviewData(conditions[0]), getPreviewData(conditions[1])]);
+      setData(composeGaugeData(currentData, targetData));
+
+      await saveConfig(config);
+      await setRendered();
       Toast.success('配置已保存');
     } finally {
       setSaving(false);
