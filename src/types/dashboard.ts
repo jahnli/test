@@ -37,6 +37,7 @@ export interface CustomConfig {
   targetLabel: string;
   accentColor: string;
   showDetail: boolean;
+  sourceConditions?: DataCondition[];
 }
 
 export interface PluginConfig {

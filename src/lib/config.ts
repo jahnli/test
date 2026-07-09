@@ -51,10 +51,11 @@ function conditionFromSource(source: ValueSourceForm, ranges: DataRange[]): Data
 }
 
 export function configToForm(config?: Partial<PluginConfig>): FormState {
-  const conditions = Array.isArray(config?.dataConditions)
-    ? config.dataConditions
-    : config?.dataConditions
-      ? [config.dataConditions]
+  const configuredConditions = config?.customConfig?.sourceConditions?.length ? config.customConfig.sourceConditions : config?.dataConditions;
+  const conditions = Array.isArray(configuredConditions)
+    ? configuredConditions
+    : configuredConditions
+      ? [configuredConditions]
       : [];
   const custom = {
     ...defaultCustomConfig,
@@ -94,17 +95,20 @@ export function configToForm(config?: Partial<PluginConfig>): FormState {
 }
 
 export function formToConfig(form: FormState, currentRanges: DataRange[], targetRanges: DataRange[]): PluginConfig {
+  const dataConditions = [
+    conditionFromSource(form.current, currentRanges),
+    conditionFromSource(form.target, targetRanges),
+  ];
+
   return {
-    dataConditions: [
-      conditionFromSource(form.current, currentRanges),
-      conditionFromSource(form.target, targetRanges),
-    ],
+    dataConditions,
     customConfig: {
       title: form.title,
       currentLabel: form.currentLabel,
       targetLabel: form.targetLabel,
       accentColor: form.accentColor,
       showDetail: form.showDetail,
+      sourceConditions: dataConditions,
     },
   };
 }

@@ -24,6 +24,10 @@ const configurableStates: DashboardState[] = ['Create', 'Config'];
 const defaultRanges: DataRange[] = [{ type: 'ALL' }];
 
 function getConditionList(config?: PluginConfig): DataCondition[] {
+  if (config?.customConfig?.sourceConditions?.length) {
+    return config.customConfig.sourceConditions;
+  }
+
   if (!config?.dataConditions) {
     return [];
   }
