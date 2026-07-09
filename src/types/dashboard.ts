@@ -45,7 +45,7 @@ export interface CustomConfig {
 }
 
 export interface PluginConfig {
-  dataConditions: DataCondition | DataCondition[];
+  dataConditions: DataCondition[];
   customConfig: CustomConfig;
 }
 

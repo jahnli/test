@@ -130,11 +130,14 @@ function normalizeConfig(value: unknown): PluginConfig {
     dataRange: condition?.dataRange,
     series: condition?.series,
   });
+  const rawConditions = config?.dataConditions as DataCondition | DataCondition[] | undefined;
 
   return {
-    dataConditions: Array.isArray(config?.dataConditions)
-      ? config.dataConditions.map((condition) => normalizeCondition(condition))
-      : normalizeCondition(config?.dataConditions),
+    dataConditions: Array.isArray(rawConditions)
+      ? rawConditions.map((condition) => normalizeCondition(condition))
+      : rawConditions
+        ? [normalizeCondition(rawConditions)]
+        : [],
     customConfig: {
       ...defaultCustomConfig,
       ...config?.customConfig,
@@ -258,7 +261,12 @@ export async function setRendered() {
 
 export function onDataChange(handler: (data: DashboardData) => void) {
   try {
-    return dashboardApi.onDataChange?.((event) => handler(event.data)) ?? (() => undefined);
+    return (
+      dashboardApi.onDataChange?.((event) => {
+        debugLog('dashboard.onDataChange 事件数据', event.data);
+        handler(event.data);
+      }) ?? (() => undefined)
+    );
   } catch {
     return () => undefined;
   }
@@ -266,7 +274,12 @@ export function onDataChange(handler: (data: DashboardData) => void) {
 
 export function onConfigChange(handler: (config: PluginConfig) => void) {
   try {
-    return dashboardApi.onConfigChange?.((event) => handler(normalizeConfig(event.data))) ?? (() => undefined);
+    return (
+      dashboardApi.onConfigChange?.((event) => {
+        debugLog('dashboard.onConfigChange 事件数据', event.data);
+        handler(normalizeConfig(event.data));
+      }) ?? (() => undefined)
+    );
   } catch {
     return () => undefined;
   }
