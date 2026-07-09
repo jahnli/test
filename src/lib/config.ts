@@ -120,7 +120,7 @@ export function formToConfig(form: FormState, currentRanges: DataRange[], target
   ];
 
   return {
-    dataConditions,
+    dataConditions: dataConditions[0],
     customConfig: {
       title: form.title,
       currentLabel: form.currentLabel,

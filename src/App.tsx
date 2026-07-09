@@ -216,7 +216,7 @@ export default function App() {
     }
 
     const config = formToConfig(form, currentRanges, targetRanges);
-    const conditions = Array.isArray(config.dataConditions) ? config.dataConditions : [config.dataConditions];
+    const conditions = getConditionList(config);
     dataConditionsRef.current = conditions;
 
     void Promise.all([getPreviewData(conditions[0]), getPreviewData(conditions[1])]).then(([currentData, targetData]) => {
@@ -248,7 +248,7 @@ export default function App() {
     setSaving(true);
     try {
       const config = formToConfig(form, currentRanges, targetRanges);
-      const conditions = Array.isArray(config.dataConditions) ? config.dataConditions : [config.dataConditions];
+      const conditions = getConditionList(config);
       dataConditionsRef.current = conditions;
 
       const [currentData, targetData] = await Promise.all([getPreviewData(conditions[0]), getPreviewData(conditions[1])]);
@@ -257,6 +257,9 @@ export default function App() {
       await saveConfig(config);
       await setRendered();
       Toast.success('配置已保存');
+    } catch (error) {
+      console.error('[目标完成率插件] 保存配置失败', error);
+      Toast.error('保存配置失败，请查看控制台日志');
     } finally {
       setSaving(false);
     }

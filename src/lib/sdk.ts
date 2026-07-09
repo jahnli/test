@@ -209,9 +209,19 @@ export async function getConfig() {
 
 export async function saveConfig(config: PluginConfig) {
   try {
-    return await withTimeout(dashboardApi.saveConfig?.(config), true);
-  } catch {
-    return true;
+    debugLog('dashboard.saveConfig 入参', config);
+
+    if (typeof dashboardApi.saveConfig !== 'function') {
+      debugLog('dashboard.saveConfig 方法不存在', Object.keys(dashboardApi as Record<string, unknown>));
+      throw new Error('dashboard.saveConfig 方法不存在');
+    }
+
+    const result = await dashboardApi.saveConfig(config);
+    debugLog('dashboard.saveConfig 返回', result);
+    return result;
+  } catch (error) {
+    debugLog('dashboard.saveConfig 保存失败', error);
+    throw error;
   }
 }
 
