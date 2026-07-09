@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Spin, Toast } from '@douyinfe/semi-ui';
 import { ConfigPanel } from './components/ConfigPanel';
 import { GaugeChart } from './components/GaugeChart';
@@ -17,11 +17,19 @@ import {
   onDataChange,
   saveConfig,
 } from './lib/sdk';
-import type { DashboardData, DashboardState, DataRange, FieldMeta, FormState, TableMeta } from './types/dashboard';
+import type { DashboardData, DashboardState, DataCondition, DataRange, FieldMeta, FormState, PluginConfig, TableMeta } from './types/dashboard';
 import './styles.css';
 
 const configurableStates: DashboardState[] = ['Create', 'Config'];
 const defaultRanges: DataRange[] = [{ type: 'ALL' }];
+
+function getConditionList(config?: PluginConfig): DataCondition[] {
+  if (!config?.dataConditions) {
+    return [];
+  }
+
+  return Array.isArray(config.dataConditions) ? config.dataConditions : [config.dataConditions];
+}
 
 export default function App() {
   const [dashboardState] = useState<DashboardState>(() => getDashboardState());
@@ -34,6 +42,7 @@ export default function App() {
   const [data, setData] = useState<DashboardData>(emptyData);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const dataConditionsRef = useRef<DataCondition[]>([]);
 
   const isConfigurable = configurableStates.includes(dashboardState);
   const isFullScreen = dashboardState === 'FullScreen';
@@ -52,6 +61,19 @@ export default function App() {
 
   const gaugeDatum = useMemo(() => dataToGaugeDatum(data), [data]);
 
+  const resolveGaugeData = async (conditions: DataCondition[], hostData?: DashboardData) => {
+    if (hostData && dataToGaugeDatum(hostData)) {
+      return hostData;
+    }
+
+    if (conditions.length >= 2) {
+      const [currentData, targetData] = await Promise.all([getPreviewData(conditions[0]), getPreviewData(conditions[1])]);
+      return composeGaugeData(currentData, targetData);
+    }
+
+    return hostData ?? emptyData;
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -59,6 +81,8 @@ export default function App() {
       setLoading(true);
       const tableList = await getTables();
       const persistedConfig = dashboardState === 'Create' ? undefined : await getConfig();
+      const persistedConditions = getConditionList(persistedConfig);
+      dataConditionsRef.current = persistedConditions;
       const nextForm = configToForm(persistedConfig);
       const fallbackTableId = tableList[0]?.id || '';
       const currentTableId = nextForm.current.tableId || fallbackTableId;
@@ -94,7 +118,8 @@ export default function App() {
       });
 
       if (!isConfigurable) {
-        setData(await getData());
+        const hostData = await getData();
+        setData(await resolveGaugeData(persistedConditions, hostData));
       }
 
       setLoading(false);
@@ -179,6 +204,7 @@ export default function App() {
 
     const config = formToConfig(form, currentRanges, targetRanges);
     const conditions = Array.isArray(config.dataConditions) ? config.dataConditions : [config.dataConditions];
+    dataConditionsRef.current = conditions;
 
     void Promise.all([getPreviewData(conditions[0]), getPreviewData(conditions[1])]).then(([currentData, targetData]) => {
       setData(composeGaugeData(currentData, targetData));
@@ -186,8 +212,18 @@ export default function App() {
   }, [form, isConfigurable, currentRanges, targetRanges]);
 
   useEffect(() => {
-    const offDataChange = onDataChange((nextData) => setData(nextData));
-    const offConfigChange = onConfigChange((nextConfig) => setForm(configToForm(nextConfig)));
+    const offDataChange = onDataChange((nextData) => {
+      if (dataToGaugeDatum(nextData)) {
+        setData(nextData);
+        return;
+      }
+
+      void resolveGaugeData(dataConditionsRef.current, nextData).then(setData);
+    });
+    const offConfigChange = onConfigChange((nextConfig) => {
+      dataConditionsRef.current = getConditionList(nextConfig);
+      setForm(configToForm(nextConfig));
+    });
 
     return () => {
       offDataChange();

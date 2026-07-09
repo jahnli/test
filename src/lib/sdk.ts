@@ -125,14 +125,16 @@ function normalizeRanges(value: unknown): DataRange[] {
 
 function normalizeConfig(value: unknown): PluginConfig {
   const config = value as Partial<PluginConfig> | undefined;
-  const condition = Array.isArray(config?.dataConditions) ? config?.dataConditions[0] : config?.dataConditions;
+  const normalizeCondition = (condition?: DataCondition): DataCondition => ({
+    tableId: condition?.tableId ?? '',
+    dataRange: condition?.dataRange,
+    series: condition?.series,
+  });
 
   return {
-    dataConditions: {
-      tableId: condition?.tableId ?? '',
-      dataRange: condition?.dataRange,
-      series: condition?.series,
-    },
+    dataConditions: Array.isArray(config?.dataConditions)
+      ? config.dataConditions.map((condition) => normalizeCondition(condition))
+      : normalizeCondition(config?.dataConditions),
     customConfig: {
       ...defaultCustomConfig,
       ...config?.customConfig,
