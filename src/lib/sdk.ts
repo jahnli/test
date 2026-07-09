@@ -32,6 +32,12 @@ interface LooseBase {
 const dashboardApi = dashboard as unknown as LooseDashboard;
 const baseApi = base as unknown as LooseBase;
 const sdkTimeoutMs = 900;
+const debugPrefix = '[目标完成率插件]';
+
+function debugLog(label: string, value: unknown) {
+  // Temporary diagnostics for Feishu dashboard SDK integration.
+  console.log(`${debugPrefix} ${label}`, value);
+}
 
 async function withTimeout<T>(promise: Promise<T> | undefined, fallback: T): Promise<T> {
   if (!promise) {
@@ -146,8 +152,13 @@ export function getDashboardState(): DashboardState {
 export async function getTables() {
   try {
     const tables = await withTimeout(baseApi.getTableList?.(), []);
-    return await normalizeTableList(tables);
+    debugLog('base.getTableList 原始返回', tables);
+
+    const normalized = await normalizeTableList(tables);
+    debugLog('数据表归一化结果', normalized);
+    return normalized;
   } catch {
+    debugLog('base.getTableList 获取失败', []);
     return [];
   }
 }
@@ -155,8 +166,13 @@ export async function getTables() {
 export async function getFields(tableId: string) {
   try {
     const fields = await withTimeout(dashboardApi.getCategories?.(tableId), []);
-    return normalizeFieldList(fields);
+    debugLog(`dashboard.getCategories(${tableId}) 原始返回`, fields);
+
+    const normalized = normalizeFieldList(fields);
+    debugLog('字段归一化结果', normalized);
+    return normalized;
   } catch {
+    debugLog(`dashboard.getCategories(${tableId}) 获取失败`, []);
     return [];
   }
 }
@@ -164,8 +180,13 @@ export async function getFields(tableId: string) {
 export async function getRanges(tableId: string) {
   try {
     const ranges = await withTimeout(dashboardApi.getTableDataRange?.(tableId), [{ type: 'ALL' }]);
-    return normalizeRanges(ranges);
+    debugLog(`dashboard.getTableDataRange(${tableId}) 原始返回`, ranges);
+
+    const normalized = normalizeRanges(ranges);
+    debugLog('数据范围归一化结果', normalized);
+    return normalized;
   } catch {
+    debugLog(`dashboard.getTableDataRange(${tableId}) 获取失败`, [{ type: 'ALL' }]);
     return [{ type: 'ALL' }];
   }
 }
@@ -173,8 +194,13 @@ export async function getRanges(tableId: string) {
 export async function getConfig() {
   try {
     const config = await withTimeout(dashboardApi.getConfig?.(), undefined);
-    return normalizeConfig(config);
+    debugLog('dashboard.getConfig 原始返回', config);
+
+    const normalized = normalizeConfig(config);
+    debugLog('配置归一化结果', normalized);
+    return normalized;
   } catch {
+    debugLog('dashboard.getConfig 获取失败', undefined);
     return normalizeConfig(undefined);
   }
 }
@@ -190,17 +216,22 @@ export async function saveConfig(config: PluginConfig) {
 export async function getData() {
   try {
     const data = await withTimeout(dashboardApi.getData?.(), emptyData);
+    debugLog('dashboard.getData 原始返回', data);
     return (data as DashboardData) ?? emptyData;
   } catch {
+    debugLog('dashboard.getData 获取失败', emptyData);
     return emptyData;
   }
 }
 
 export async function getPreviewData(condition: DataCondition | DataCondition[]) {
   try {
+    debugLog('dashboard.getPreviewData 入参', condition);
     const data = await withTimeout(dashboardApi.getPreviewData?.(condition), emptyData);
+    debugLog('dashboard.getPreviewData 原始返回', data);
     return (data as DashboardData) ?? emptyData;
   } catch {
+    debugLog('dashboard.getPreviewData 获取失败', emptyData);
     return emptyData;
   }
 }
