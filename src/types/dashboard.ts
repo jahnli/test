@@ -38,6 +38,10 @@ export interface CustomConfig {
   accentColor: string;
   showDetail: boolean;
   sourceConditions?: DataCondition[];
+  sourceForm?: {
+    current: ValueSourceForm;
+    target: ValueSourceForm;
+  };
 }
 
 export interface PluginConfig {

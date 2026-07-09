@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Spin, Toast } from '@douyinfe/semi-ui';
 import { ConfigPanel } from './components/ConfigPanel';
 import { GaugeChart } from './components/GaugeChart';
-import { configToForm, formToConfig } from './lib/config';
+import { conditionFromSource, configToForm, formToConfig } from './lib/config';
 import { composeGaugeData, dataToGaugeDatum } from './lib/completion';
 import { defaultCustomConfig, defaultFormState, emptyData } from './lib/defaults';
 import {
@@ -97,17 +97,7 @@ export default function App() {
       const [targetFieldList, targetRangeList] = targetTableId
         ? await Promise.all([getFields(targetTableId), getRanges(targetTableId)])
         : [[], defaultRanges];
-
-      if (!mounted) {
-        return;
-      }
-
-      setTables(tableList);
-      setCurrentFields(currentFieldList);
-      setTargetFields(targetFieldList);
-      setCurrentRanges(currentRangeList);
-      setTargetRanges(targetRangeList);
-      setForm({
+      const hydratedForm = {
         ...nextForm,
         current: {
           ...nextForm.current,
@@ -119,11 +109,29 @@ export default function App() {
           tableId: targetTableId,
           fieldId: nextForm.target.fieldId || targetFieldList[0]?.fieldId || '',
         },
-      });
+      };
+      const effectiveConditions =
+        persistedConditions.length >= 2
+          ? persistedConditions
+          : hydratedForm.current.tableId && hydratedForm.target.tableId
+            ? [conditionFromSource(hydratedForm.current, currentRangeList), conditionFromSource(hydratedForm.target, targetRangeList)]
+            : persistedConditions;
+
+      if (!mounted) {
+        return;
+      }
+
+      setTables(tableList);
+      setCurrentFields(currentFieldList);
+      setTargetFields(targetFieldList);
+      setCurrentRanges(currentRangeList);
+      setTargetRanges(targetRangeList);
+      setForm(hydratedForm);
+      dataConditionsRef.current = effectiveConditions;
 
       if (!isConfigurable) {
         const hostData = await getData();
-        setData(await resolveGaugeData(persistedConditions, hostData));
+        setData(await resolveGaugeData(effectiveConditions, hostData));
       }
 
       setLoading(false);

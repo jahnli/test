@@ -34,7 +34,7 @@ function sourceFromCondition(condition?: DataCondition): ValueSourceForm {
   };
 }
 
-function conditionFromSource(source: ValueSourceForm, ranges: DataRange[]): DataCondition {
+export function conditionFromSource(source: ValueSourceForm, ranges: DataRange[]): DataCondition {
   return {
     tableId: source.tableId,
     dataRange: rangeFromKey(source.dataRangeKey, ranges),
@@ -61,6 +61,25 @@ export function configToForm(config?: Partial<PluginConfig>): FormState {
     ...defaultCustomConfig,
     ...config?.customConfig,
   };
+
+  if (custom.sourceForm) {
+    return {
+      ...defaultFormState,
+      current: {
+        ...defaultFormState.current,
+        ...custom.sourceForm.current,
+      },
+      target: {
+        ...defaultFormState.target,
+        ...custom.sourceForm.target,
+      },
+      title: custom.title,
+      currentLabel: custom.currentLabel,
+      targetLabel: custom.targetLabel,
+      accentColor: custom.accentColor,
+      showDetail: custom.showDetail,
+    };
+  }
 
   const legacySeries = Array.isArray(conditions[0]?.series) ? conditions[0].series : [];
   const current: ValueSourceForm =
@@ -109,6 +128,10 @@ export function formToConfig(form: FormState, currentRanges: DataRange[], target
       accentColor: form.accentColor,
       showDetail: form.showDetail,
       sourceConditions: dataConditions,
+      sourceForm: {
+        current: { ...form.current },
+        target: { ...form.target },
+      },
     },
   };
 }
