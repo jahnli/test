@@ -4,7 +4,5 @@ dist/
 .env.*
 *.log
 *.tsbuildinfo
-vite.config.js
-vite.config.d.ts
 verification-*.png
 dev-server*.log

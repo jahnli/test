@@ -1,4 +1,4 @@
-import type { CustomConfig, DashboardData, FormState, PluginConfig, Rollup } from '../types/dashboard';
+import type { CustomConfig, DashboardData, FormState, Rollup } from '../types/dashboard';
 
 export const rollupOptions: Array<{ label: string; value: Rollup }> = [
   { label: '求和', value: 'SUM' },
@@ -29,30 +29,4 @@ export const defaultFormState: FormState = {
   showDetail: defaultCustomConfig.showDetail,
 };
 
-export const mockData: DashboardData = [
-  [
-    { value: '当前', text: '当前' },
-    { value: '目标', text: '目标' },
-  ],
-  [
-    { value: -900000, text: '-900,000' },
-    { value: -1300000, text: '-1,300,000' },
-  ],
-];
-
-export const mockConfig: PluginConfig = {
-  dataConditions: {
-    tableId: 'mock-table',
-    series: [
-      {
-        fieldId: 'current',
-        rollup: 'SUM',
-      },
-      {
-        fieldId: 'target',
-        rollup: 'SUM',
-      },
-    ],
-  },
-  customConfig: defaultCustomConfig,
-};
+export const emptyData: DashboardData = [];

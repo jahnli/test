@@ -4,7 +4,7 @@ import { ConfigPanel } from './components/ConfigPanel';
 import { GaugeChart } from './components/GaugeChart';
 import { configToForm, formToConfig } from './lib/config';
 import { dataToGaugeDatum } from './lib/completion';
-import { defaultCustomConfig, defaultFormState, mockData } from './lib/defaults';
+import { defaultCustomConfig, defaultFormState, emptyData } from './lib/defaults';
 import {
   getConfig,
   getDashboardState,
@@ -28,7 +28,7 @@ export default function App() {
   const [fields, setFields] = useState<FieldMeta[]>([]);
   const [ranges, setRanges] = useState<DataRange[]>([{ type: 'ALL' }]);
   const [form, setForm] = useState<FormState>(defaultFormState);
-  const [data, setData] = useState<DashboardData>(mockData);
+  const [data, setData] = useState<DashboardData>(emptyData);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 

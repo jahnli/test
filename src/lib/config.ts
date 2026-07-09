@@ -23,7 +23,7 @@ export function rangeFromKey(key: string, ranges: DataRange[]) {
 }
 
 export function configToForm(config?: Partial<PluginConfig>): FormState {
-  const condition = config?.dataConditions;
+  const condition = Array.isArray(config?.dataConditions) ? config?.dataConditions[0] : config?.dataConditions;
   const custom = {
     ...defaultCustomConfig,
     ...config?.customConfig,

@@ -28,8 +28,8 @@ function describeArc(cx: number, cy: number, radius: number, startAngle: number,
 export function GaugeChart({ datum, config, fullScreen = false }: GaugeChartProps) {
   const rate = datum?.rate ?? null;
   const progress = rate === null ? 0 : Math.min(Math.max(rate, 0), 1);
-  const current = datum?.current ?? 0;
-  const target = datum?.target ?? 0;
+  const current = datum ? formatNumber(datum.current) : '--';
+  const target = datum ? formatNumber(datum.target) : '--';
   const startAngle = 160;
   const endAngle = 380;
   const progressAngle = startAngle + (endAngle - startAngle) * progress;
@@ -59,11 +59,11 @@ export function GaugeChart({ datum, config, fullScreen = false }: GaugeChartProp
       {config.showDetail ? (
         <div className="gauge-detail">
           <span className="detail-current">
-            {config.currentLabel} {formatNumber(current)}
+            {config.currentLabel} {current}
           </span>
           <span className="detail-separator" />
           <span className="detail-target">
-            {config.targetLabel} {formatNumber(target)}
+            {config.targetLabel} {target}
           </span>
         </div>
       ) : null}

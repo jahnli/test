@@ -1,5 +1,5 @@
 import { base, dashboard } from '@lark-base-open/js-sdk';
-import { defaultCustomConfig, mockConfig, mockData } from './defaults';
+import { defaultCustomConfig, emptyData } from './defaults';
 import type {
   DashboardData,
   DashboardState,
@@ -100,12 +100,13 @@ function normalizeRanges(value: unknown): DataRange[] {
 
 function normalizeConfig(value: unknown): PluginConfig {
   const config = value as Partial<PluginConfig> | undefined;
+  const condition = Array.isArray(config?.dataConditions) ? config?.dataConditions[0] : config?.dataConditions;
 
   return {
     dataConditions: {
-      tableId: config?.dataConditions?.tableId ?? '',
-      dataRange: config?.dataConditions?.dataRange,
-      series: config?.dataConditions?.series,
+      tableId: condition?.tableId ?? '',
+      dataRange: condition?.dataRange,
+      series: condition?.series,
     },
     customConfig: {
       ...defaultCustomConfig,
@@ -126,32 +127,19 @@ export function getDashboardState(): DashboardState {
 export async function getTables() {
   try {
     const tables = await withTimeout(baseApi.getTableList?.(), []);
-    const normalized = normalizeTableList(tables);
-    if (normalized.length > 0) {
-      return normalized;
-    }
+    return normalizeTableList(tables);
   } catch {
-    // Local browser preview runs outside the Feishu host iframe.
+    return [];
   }
-
-  return [{ id: 'mock-table', name: '示例数据表' }];
 }
 
 export async function getFields(tableId: string) {
   try {
     const fields = await withTimeout(dashboardApi.getCategories?.(tableId), []);
-    const normalized = normalizeFieldList(fields);
-    if (normalized.length > 0) {
-      return normalized;
-    }
+    return normalizeFieldList(fields);
   } catch {
-    // Local browser preview runs outside the Feishu host iframe.
+    return [];
   }
-
-  return [
-    { fieldId: 'current', fieldName: '当前' },
-    { fieldId: 'target', fieldName: '目标' },
-  ];
 }
 
 export async function getRanges(tableId: string) {
@@ -159,18 +147,16 @@ export async function getRanges(tableId: string) {
     const ranges = await withTimeout(dashboardApi.getTableDataRange?.(tableId), [{ type: 'ALL' }]);
     return normalizeRanges(ranges);
   } catch {
-    // Local browser preview runs outside the Feishu host iframe.
+    return [{ type: 'ALL' }];
   }
-
-  return [{ type: 'ALL' }];
 }
 
 export async function getConfig() {
   try {
-    const config = await withTimeout(dashboardApi.getConfig?.(), mockConfig);
+    const config = await withTimeout(dashboardApi.getConfig?.(), undefined);
     return normalizeConfig(config);
   } catch {
-    return mockConfig;
+    return normalizeConfig(undefined);
   }
 }
 
@@ -184,19 +170,19 @@ export async function saveConfig(config: PluginConfig) {
 
 export async function getData() {
   try {
-    const data = await withTimeout(dashboardApi.getData?.(), mockData);
-    return (data as DashboardData) ?? mockData;
+    const data = await withTimeout(dashboardApi.getData?.(), emptyData);
+    return (data as DashboardData) ?? emptyData;
   } catch {
-    return mockData;
+    return emptyData;
   }
 }
 
-export async function getPreviewData(condition: DataCondition) {
+export async function getPreviewData(condition: DataCondition | DataCondition[]) {
   try {
-    const data = await withTimeout(dashboardApi.getPreviewData?.(condition), mockData);
-    return (data as DashboardData) ?? mockData;
+    const data = await withTimeout(dashboardApi.getPreviewData?.(condition), emptyData);
+    return (data as DashboardData) ?? emptyData;
   } catch {
-    return mockData;
+    return emptyData;
   }
 }
 
