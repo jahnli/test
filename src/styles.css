@@ -1,0 +1,286 @@
+:root {
+  color: #1f2329;
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Tahoma, "PingFang SC", "Microsoft Yahei", Arial,
+    "Hiragino Sans GB", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent !important;
+  background-image: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.app-shell {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.loading-shell {
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-pane {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  place-items: center;
+  padding: clamp(8px, 2.2vmin, 24px);
+}
+
+.config-panel {
+  position: relative;
+  display: flex;
+  width: 340px;
+  min-width: 340px;
+  height: 100%;
+  flex-direction: column;
+  border-left: 1px solid rgba(31, 35, 41, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(8px);
+}
+
+.config-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.panel-section + .panel-section {
+  margin-top: 26px;
+}
+
+.panel-section h2 {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: #646a73;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  height: 34px;
+  min-width: 0;
+  border: 1px solid rgba(31, 35, 41, 0.15);
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2329;
+  outline: none;
+  padding: 0 10px;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: #25a8ff;
+  box-shadow: 0 0 0 3px rgba(37, 168, 255, 0.13);
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.palette {
+  display: flex;
+  gap: 10px;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+}
+
+.swatch.is-active {
+  border-color: #fff;
+  box-shadow:
+    0 0 0 2px var(--swatch),
+    0 6px 14px rgba(31, 35, 41, 0.18);
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #1f2329;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.config-actions {
+  display: flex;
+  height: 70px;
+  flex: 0 0 70px;
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(31, 35, 41, 0.08);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0 20px;
+}
+
+.gauge-card {
+  display: grid;
+  width: min(100%, 560px);
+  min-width: 220px;
+  gap: 0;
+  color: #1f2329;
+}
+
+.gauge-stage {
+  position: relative;
+  width: min(72vmin, 350px);
+  min-width: 210px;
+  aspect-ratio: 300 / 240;
+  justify-self: center;
+}
+
+.gauge-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.gauge-track,
+.gauge-progress {
+  stroke-width: 24;
+  stroke-linecap: round;
+}
+
+.gauge-track {
+  stroke: rgba(31, 35, 41, 0.08);
+}
+
+.gauge-progress {
+  transition:
+    stroke-dasharray 220ms ease,
+    stroke 220ms ease;
+}
+
+.gauge-value {
+  position: absolute;
+  top: 59%;
+  left: 50%;
+  color: #1f2329;
+  font-size: clamp(40px, 9.5vmin, 58px);
+  font-weight: 800;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.gauge-detail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  margin-top: -38px;
+  font-size: clamp(18px, 3.2vmin, 24px);
+  line-height: 1.35;
+}
+
+.detail-current {
+  color: #25a8ff;
+}
+
+.detail-target {
+  color: #646a73;
+}
+
+.detail-separator {
+  width: 1px;
+  height: 1em;
+  background: rgba(31, 35, 41, 0.24);
+}
+
+.is-view .preview-pane {
+  padding: clamp(10px, 3vmin, 30px);
+}
+
+.is-view .gauge-card {
+  width: min(100%, 560px);
+}
+
+.is-fullscreen {
+  background: #101820;
+  color: #f7f8fa;
+}
+
+.is-fullscreen .gauge-card {
+  color: #f7f8fa;
+}
+
+.is-fullscreen .gauge-value {
+  color: #f7f8fa;
+}
+
+.is-fullscreen .gauge-track {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+
+.is-fullscreen .detail-target {
+  color: rgba(247, 248, 250, 0.76);
+}
+
+@media (max-width: 720px) {
+  .app-shell.is-configurable {
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .config-panel {
+    width: 100%;
+    min-width: 0;
+    min-height: 420px;
+    border-top: 1px solid rgba(31, 35, 41, 0.12);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 360px), (max-height: 280px) {
+  .gauge-detail {
+    display: none;
+  }
+
+  .gauge-stage {
+    width: min(78vmin, 260px);
+  }
+}

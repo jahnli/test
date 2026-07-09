@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="目标完成率">
+  <rect width="128" height="128" rx="28" fill="#E8F6FF"/>
+  <path d="M29 78a35 35 0 0 1 70 0" fill="none" stroke="#D8E8F2" stroke-width="14" stroke-linecap="round"/>
+  <path d="M29 78a35 35 0 0 1 58-26" fill="none" stroke="#25A8FF" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="64" cy="78" r="5" fill="#1F2329"/>
+  <path d="M64 78 82 58" fill="none" stroke="#1F2329" stroke-width="6" stroke-linecap="round"/>
+  <rect x="39" y="91" width="50" height="8" rx="4" fill="#25A8FF" opacity=".95"/>
+</svg>
