@@ -18,6 +18,7 @@ import {
   onDataChange,
   saveConfig,
   setRendered,
+  watchSourceTables,
 } from './lib/sdk';
 import type { DashboardData, DashboardState, DataCondition, DataRange, FieldMeta, FormState, PluginConfig, TableMeta } from './types/dashboard';
 import './styles.css';
@@ -50,6 +51,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const dataConditionsRef = useRef<DataCondition[]>([]);
+  const sourceRefreshTimerRef = useRef<number | null>(null);
 
   const isConfigurable = configurableStates.includes(dashboardState);
   const isFullScreen = dashboardState === 'FullScreen';
@@ -321,6 +323,62 @@ export default function App() {
       offConfigChange();
     };
   }, []);
+
+  useEffect(() => {
+    const tableIds = [form.current.tableId, form.target.tableId].filter((tableId): tableId is string => Boolean(tableId));
+
+    if (tableIds.length === 0) {
+      return;
+    }
+
+    let disposed = false;
+    let off: (() => void) | undefined;
+
+    const scheduleRefresh = (reason: unknown) => {
+      console.log('[progress-plugin] source table change detected', {
+        reason,
+        cachedConditions: dataConditionsRef.current,
+      });
+
+      if (sourceRefreshTimerRef.current !== null) {
+        window.clearTimeout(sourceRefreshTimerRef.current);
+      }
+
+      sourceRefreshTimerRef.current = window.setTimeout(() => {
+        if (disposed) {
+          return;
+        }
+
+        void resolveGaugeData(dataConditionsRef.current).then(async (resolvedData) => {
+          console.log('[progress-plugin] source table change set data', {
+            resolvedData,
+            gaugeDatum: dataToGaugeDatum(resolvedData),
+          });
+          setData(resolvedData);
+          await setRendered();
+        });
+      }, 250);
+    };
+
+    void watchSourceTables(tableIds, scheduleRefresh).then((nextOff) => {
+      if (disposed) {
+        nextOff();
+        return;
+      }
+
+      off = nextOff;
+    });
+
+    return () => {
+      disposed = true;
+      off?.();
+
+      if (sourceRefreshTimerRef.current !== null) {
+        window.clearTimeout(sourceRefreshTimerRef.current);
+        sourceRefreshTimerRef.current = null;
+      }
+    };
+  }, [form.current.tableId, form.target.tableId]);
 
   const handleSave = async () => {
     setSaving(true);

@@ -27,10 +27,20 @@ interface LooseDashboard {
 
 interface LooseBase {
   getTableList?: () => Promise<unknown>;
+  getTableById?: (tableId: string) => Promise<LooseTable>;
 }
 
 interface LooseBridge {
   onDataChange?: (handler: (event: { data: unknown }) => void) => Off;
+}
+
+interface LooseTable {
+  registerTableEvent?: (eventName: string) => Promise<void>;
+  unregisterTableEvent?: (eventName: string) => Promise<void>;
+  onFieldModify?: (handler: (event: { data: unknown }) => void) => Off;
+  onRecordAdd?: (handler: (event: { data: unknown }) => void) => Off;
+  onRecordDelete?: (handler: (event: { data: unknown }) => void) => Off;
+  onRecordModify?: (handler: (event: { data: unknown }) => void) => Off;
 }
 
 const dashboardApi = dashboard as unknown as LooseDashboard;
@@ -318,5 +328,64 @@ export function onBridgeDataChange(handler: (eventData: unknown) => void) {
     debugLog('bridge.onDataChange register failed', error);
     return () => undefined;
   }
+}
+
+export async function watchSourceTables(tableIds: string[], handler: (ctx: { tableId: string; eventName: string; data: unknown }) => void) {
+  const uniqueTableIds = Array.from(new Set(tableIds.filter(Boolean)));
+  const offs: Off[] = [];
+  const eventNames = ['FieldModify', 'RecordAdd', 'RecordDelete', 'RecordModify'];
+
+  debugLog('watch source tables start', uniqueTableIds);
+
+  await Promise.all(
+    uniqueTableIds.map(async (tableId) => {
+      try {
+        const table = await baseApi.getTableById?.(tableId);
+
+        if (!table) {
+          debugLog('watch source table missing', tableId);
+          return;
+        }
+
+        await Promise.all(eventNames.map((eventName) => table.registerTableEvent?.(eventName).catch((error) => {
+          debugLog('register table event failed', { tableId, eventName, error });
+        })));
+
+        const bind = (eventName: string, listen?: (handler: (event: { data: unknown }) => void) => Off) => {
+          if (typeof listen !== 'function') {
+            debugLog('table listener missing', { tableId, eventName });
+            return;
+          }
+
+          const off = listen.call(table, (event) => {
+            debugLog('source table event', { tableId, eventName, data: event.data });
+            handler({ tableId, eventName, data: event.data });
+          });
+          offs.push(off);
+        };
+
+        bind('FieldModify', table.onFieldModify);
+        bind('RecordAdd', table.onRecordAdd);
+        bind('RecordDelete', table.onRecordDelete);
+        bind('RecordModify', table.onRecordModify);
+      } catch (error) {
+        debugLog('watch source table failed', { tableId, error });
+      }
+    }),
+  );
+
+  return () => {
+    offs.forEach((off) => off());
+    void Promise.all(
+      uniqueTableIds.map(async (tableId) => {
+        try {
+          const table = await baseApi.getTableById?.(tableId);
+          await Promise.all(eventNames.map((eventName) => table?.unregisterTableEvent?.(eventName).catch(() => undefined)));
+        } catch {
+          // Ignore cleanup failures.
+        }
+      }),
+    );
+  };
 }
 
