@@ -26,6 +26,7 @@ interface LooseDashboard {
 }
 
 interface LooseBase {
+  getTableMetaList?: () => Promise<unknown>;
   getTableList?: () => Promise<unknown>;
 }
 
@@ -46,24 +47,43 @@ async function withTimeout<T>(promise: Promise<T> | undefined, fallback: T): Pro
   ]);
 }
 
-function normalizeTableList(value: unknown): TableMeta[] {
+async function readMaybeAsyncString(value: unknown, receiver?: unknown) {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'function') {
+    try {
+      const result = await (value as () => Promise<unknown> | unknown).call(receiver);
+      return typeof result === 'string' ? result : '';
+    } catch {
+      return '';
+    }
+  }
+
+  return '';
+}
+
+async function normalizeTableList(value: unknown): Promise<TableMeta[]> {
   const source = Array.isArray(value)
     ? value
     : Array.isArray((value as { tables?: unknown[] })?.tables)
       ? (value as { tables: unknown[] }).tables
       : [];
 
-  return source
-    .map((item) => {
+  const tables = await Promise.all(
+    source.map(async (item) => {
       const record = item as Record<string, unknown>;
       const id = record.id ?? record.tableId;
-      const name = record.name ?? record.tableName;
+      const name = await readMaybeAsyncString(record.name ?? record.tableName ?? record.getName, record);
       return {
         id: String(id ?? ''),
-        name: String(name ?? '未命名数据表'),
+        name: name || '未命名数据表',
       };
-    })
-    .filter((item) => item.id);
+    }),
+  );
+
+  return tables.filter((item) => item.id);
 }
 
 function normalizeFieldList(value: unknown): FieldMeta[] {
@@ -126,8 +146,14 @@ export function getDashboardState(): DashboardState {
 
 export async function getTables() {
   try {
+    const tableMetas = await withTimeout(baseApi.getTableMetaList?.(), undefined);
+    const tablesFromMeta = await normalizeTableList(tableMetas);
+    if (tablesFromMeta.length > 0) {
+      return tablesFromMeta;
+    }
+
     const tables = await withTimeout(baseApi.getTableList?.(), []);
-    return normalizeTableList(tables);
+    return await normalizeTableList(tables);
   } catch {
     return [];
   }
